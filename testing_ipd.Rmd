@@ -1,0 +1,70 @@
+---
+title: "Troubleshooting the Psi distribution"
+author: "Andrew Rominger"
+date: "4/24/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The current implementation of the $\Psi$ distribution in *meteR* doesn't work well for large values of the state variables. For example for BCI:
+
+```{r, cache=TRUE}
+library(meteR)
+bci <- read.csv('~/Dropbox/Research/data/stri/BCIS.csv', as.is = TRUE)
+bci <- bci[bci$year == 1995, ]
+
+thisESF <- meteESF(bci$spp, bci$count, bci$dbh^2)
+thisIPD <- ipd(thisESF)
+plot(thisIPD, ptype = 'rad', log = 'xy', ylim = c(1, 10^6))
+```
+
+We could see how well the approximation for the rank $\Psi$ distribution (John's eq 7.37 in the book) works for such large values:
+
+```{r, cache=TRUE}
+rankPsi <- function(La, N0, r) {
+  la1 <- La[1]
+  la2 <- La[2]
+  b <- la1 + la2
+  
+  f <- 1/la2 * log((b * N0 + r - 0.5) / (r - 0.5)) - la1 / la2
+  
+  return(f)
+}
+
+plot(thisIPD, ptype = 'rad', log = 'xy', ylim = c(1, 10^6), add.legend = FALSE)
+lines(1:thisESF$state.var['N0'], rankPsi(thisESF$La, thisESF$state.var['N0'], 1:thisESF$state.var['N0']), 
+      col = 'blue')
+legend('topright', legend = c('data', 'meteR', 'rank approx'), col = c('black', 'red', 'blue'), 
+       pch = c(1, NA, NA), lty = c(NA, 1, 1), bty = 'n')
+```
+
+Yup, looks a lot better.  But how does it look for smaller values?
+
+```{r, cache=TRUE}
+arthESF <- meteESF(arth$spp, arth$count, arth$mass^0.75)
+arthIPD <- ipd(arthESF)
+plot(arthIPD, ptype = 'rad', log = 'xy', ylim = c(1, 1000), add.legend = FALSE)
+lines(1:arthESF$state.var['N0'], rankPsi(arthESF$La, arthESF$state.var['N0'], 1:arthESF$state.var['N0']), 
+      col = 'blue')
+legend('topright', legend = c('data', 'meteR', 'rank approx'), col = c('black', 'red', 'blue'), 
+       pch = c(1, NA, NA), lty = c(NA, 1, 1), bty = 'n')
+```
+
+Still ok there.  How about even smaller:
+
+```{r, cache=TRUE}
+randESF <- meteESF(S0 = 50, N0 = 100, E0 = 1000)
+randIPD <- ipd(randESF)
+randIPD$data <- sort(randIPD$r(100), decreasing = TRUE)
+
+plot(randIPD, ptype = 'rad', log = 'y', add.legend = FALSE)
+lines(1:randESF$state.var['N0'], rankPsi(randESF$La, randESF$state.var['N0'], 1:randESF$state.var['N0']), 
+      col = 'blue')
+legend('topright', legend = c('data', 'meteR', 'rank approx'), col = c('black', 'red', 'blue'), 
+       pch = c(1, NA, NA), lty = c(NA, 1, 1), bty = 'n')
+```
+
+There the approximation deviates. So the next step is to incorperate the approximation into the *meteR* framework for only big values of the state variables.
