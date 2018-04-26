@@ -86,7 +86,7 @@ ipd.meteESF <- function(x, ...) {
         return(out)
     }
     
-    this.q.eq <- if(.psiNumeric(x$state.var['N0'], x$state.var['E0'])) {
+    this.q.eq <- if(.psiNumeric(x$state.var['N0'], x$state.var['E0'], x$La[1], x$La[2])) {
         NULL
     } else {
         function(p, lower.tail  =  TRUE, log.p  =  FALSE) {
@@ -163,9 +163,13 @@ metePsi <- function(e, la1, la2, Z, S0, N0, E0) {
 }
 
 # helper functions to determine and implement analytical approximation
-.psiNumeric <- function(N0, E0) {
-    useApprox <- E0 > 1.4 * 10^5 - 200 * N0^0.7 | N0 > 10^4
+.psiNumeric <- function(N0, E0, la1, la2) {
+    b <- la1 + la2
+    r <- seq(1, 1/N0, length.out = N0) - 1/(2 * N0)
+    
+    useApprox <- (E0 > 1.4 * 10^5 - 200 * N0^0.7 | N0 > 10^4) & all(b * N0 + r > 0)
     names(useApprox) <- NULL
+    
     return(!useApprox)
 }
 
