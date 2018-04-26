@@ -161,3 +161,25 @@ metePsi <- function(e,la1,la2,Z,S0,N0,E0) {
     return(t1*(t2 - t3*t4))
 }
 
+# helper functions to determine and implement analytical approximation
+.psiNumeric <- function(N0, E0) {
+  return(E0 > 1.4*10^5 - 200 * N0^0.7 |
+           N0 > 10^4)
+}
+
+.qPsi <- function(p, La, N0, E0, log.p = FALSE) { # we need E0 to set the upper bound
+  la1 <- La[1]
+  la2 <- La[2]
+  b <- la1 + la2
+  
+  if(log.p) p <- exp(p)
+  r <- (1 - p) * N0
+  
+  f <- 1/la2 * log((b * N0 + r) / (r)) - la1 / la2
+  
+  # take care of boundary conditions
+  f[p == 1] <- E0
+  f[p == 0] <- 1
+  
+  return(f)
+}
