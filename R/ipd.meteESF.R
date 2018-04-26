@@ -86,7 +86,18 @@ ipd.meteESF <- function(x,...) {
       return(out)
     }
     
-    FUN <- distr::AbscontDistribution(d=this.eq, p=this.p.eq, #q=this.q.eq,
+    this.q.eq <- ifelse(.psiNumeric(x$state.var['N0'], x$state.var['E0']), 
+                        NULL, 
+                        function(p, lower.tail = TRUE, log.p = FALSE) {
+                          if(log.p) p <- exp(p)
+                          if(!lower.tail) p <- 1 - p
+                          
+                          return(qPsi(p, x$La, x$state.var['N0'], x$state.var['E0'], 
+                                      log.p = FALSE))
+                        }
+    )
+    
+    FUN <- distr::AbscontDistribution(d=this.eq, p=this.p.eq, q=this.q.eq,
                                       low1=1, low=1, up=x$state.var[3], up1=x$state.var[3],
                                       withgaps=FALSE,
                                       ngrid=distr::getdistrOption('DefaultNrGridPoints')*10^2)
