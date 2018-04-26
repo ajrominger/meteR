@@ -47,6 +47,7 @@ ipd <- function(x, ...) {
 
 #' @importFrom stats integrate
 ipd.meteESF <- function(x, ...) {
+    cat('dev version \n')
     if(is.na(x$state.var[3])) stop('must provide metabolic rate data or E0 to calculate power distributions')
     
     dat <- x$data$e
