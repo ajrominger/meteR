@@ -1,4 +1,3 @@
-
 #' @title Individual Power Distribution 
 #'  
 #' @description \code{ipd.meteESF} calculates the distribution Psi(e | N0, S0, E0), 
@@ -14,10 +13,10 @@
 #' 
 #' @examples
 #' data(arth)
-#' esf1 <- meteESF(spp=arth$spp,
-#'                abund=arth$count,
-#'                power=arth$mass^(.75),
-#'                minE=min(arth$mass^(.75)))
+#' esf1 <- meteESF(spp = arth$spp, 
+#'                abund = arth$count, 
+#'                power = arth$mass^(.75), 
+#'                minE = min(arth$mass^(.75)))
 #' ipd1 <- ipd(esf1)
 #' 
 #' @return An object of class \code{meteDist}. The object contains a list with the following elements.
@@ -37,7 +36,7 @@
 #' @references Harte, J. 2011. Maximum entropy and ecology: a theory of abundance, distribution, and energetics. Oxford University Press.
 
 ipd <- function(x, ...) {
-	UseMethod('ipd')
+    UseMethod('ipd')
 }
 
 #' @rdname ipd
@@ -47,70 +46,71 @@ ipd <- function(x, ...) {
 #' @export
 
 #' @importFrom stats integrate
-ipd.meteESF <- function(x,...) {
+ipd.meteESF <- function(x, ...) {
     if(is.na(x$state.var[3])) stop('must provide metabolic rate data or E0 to calculate power distributions')
     
     dat <- x$data$e
     if(is.null(dat)) {
         X <- NULL
     } else {
-        X <- sort(dat, decreasing=TRUE)
+        X <- sort(dat, decreasing = TRUE)
     }
     
-    this.eq <- function(epsilon, log=FALSE) {
-        out <- metePsi(epsilon, la1=x$La[1], 
-                       la2=x$La[2], Z=x$Z,
-                       S0=x$state.var[1], 
-                       N0=x$state.var[2], 
-                       E0=x$state.var[3])
+    this.eq <- function(epsilon, log = FALSE) {
+        out <- metePsi(epsilon, la1 = x$La[1], 
+                       la2 = x$La[2], Z = x$Z, 
+                       S0 = x$state.var[1], 
+                       N0 = x$state.var[2], 
+                       E0 = x$state.var[3])
         
         if(log) out <- log(out)
         
         return(out)
     }
-
-    this.p.eq <- function(epsilon, lower.tail=TRUE, log.p=FALSE) {
-      b <- sum(x$La)
-      la1 <- x$La[1]
-      la2 <- x$La[2]
-      Z <- x$Z
-      S0 <- x$state.var[1]
-      N0 <- x$state.var[2]
-      
-      out <- S0/(Z*N0*la2) * ((exp(-(N0-1) * (la1 + la2*epsilon)) - 1)/(exp(la1 + la2*epsilon) - 1) - 
-                                (exp(-(N0-1)*b) - 1)/(exp(b) - 1))
-      
-      if(!lower.tail) out <- 1 - out
-      if(log.p) out <- log(out)
-      
-      return(out)
+    
+    this.p.eq <- function(epsilon, lower.tail = TRUE, log.p = FALSE) {
+        b <- sum(x$La)
+        la1 <- x$La[1]
+        la2 <- x$La[2]
+        Z <- x$Z
+        S0 <- x$state.var[1]
+        N0 <- x$state.var[2]
+        
+        out <- S0/(Z*N0*la2) * ((exp(-(N0-1) * (la1 + la2*epsilon)) - 1)/(exp(la1 + la2*epsilon) - 1) - 
+                                    (exp(-(N0-1)*b) - 1)/(exp(b) - 1))
+        
+        if(!lower.tail) out <- 1 - out
+        if(log.p) out <- log(out)
+        
+        return(out)
     }
     
-    this.q.eq <- ifelse(.psiNumeric(x$state.var['N0'], x$state.var['E0']), 
-                        NULL, 
-                        function(p, lower.tail = TRUE, log.p = FALSE) {
-                          if(log.p) p <- exp(p)
-                          if(!lower.tail) p <- 1 - p
-                          
-                          return(qPsi(p, x$La, x$state.var['N0'], x$state.var['E0'], 
-                                      log.p = FALSE))
-                        }
-    )
+    this.q.eq <- if(.psiNumeric(x$state.var['N0'], x$state.var['E0'])) {
+        NULL
+    } else {
+        function(p, lower.tail  =  TRUE, log.p  =  FALSE) {
+            if(log.p) p <- exp(p)
+            if(!lower.tail) p <- 1 - p
+            
+            return(.qPsi(p, x$La, x$state.var['N0'], x$state.var['E0'], 
+                        log.p  =  FALSE))
+        }
+    }
     
-    FUN <- distr::AbscontDistribution(d=this.eq, p=this.p.eq, q=this.q.eq,
-                                      low1=1, low=1, up=x$state.var[3], up1=x$state.var[3],
-                                      withgaps=FALSE,
-                                      ngrid=distr::getdistrOption('DefaultNrGridPoints')*10^2)
+    FUN <- distr::AbscontDistribution(d = this.eq, p = this.p.eq, q = this.q.eq, 
+                                      low1 = 1, low = 1, up = x$state.var[3], up1 = x$state.var[3], 
+                                      withgaps = FALSE, 
+                                      ngrid = distr::getdistrOption('DefaultNrGridPoints') * 10^2)
     
-    out <- list(type='ipd', data=X, 
-                d=this.eq, p=FUN@p, q=FUN@q, r=FUN@r,
-                state.var=x$state.var, La=x$La)
+    out <- list(type = 'ipd', data = X, 
+                d = this.eq, p = FUN@p, q = FUN@q, r = FUN@r, 
+                state.var = x$state.var, La = x$La)
     class(out) <- c('ipd', 'meteDist')
     
     return(out)
 }
 
-##============================================================================
+##  ======================================== 
 #' @title Equation of the PMF for the METE individual metabolic rate distribution
 #'
 #' @description
@@ -121,7 +121,7 @@ ipd.meteESF <- function(x,...) {
 #' Typically only used in \code{ipd.meteESF} and not called by the user.
 #' 
 #' @param e the value (metabolic rate/power) at which to calculate \eqn{\Psi}
-#' @param la1,la2 Lagrange multipliers
+#' @param la1, la2 Lagrange multipliers
 #' @param Z partition function
 #' @param S0 Total number of species
 #' @param N0 Total number of individuals
@@ -131,14 +131,14 @@ ipd.meteESF <- function(x,...) {
 #' 
 #' @examples
 #' data(arth)
-#' esf1 <- meteESF(spp=arth$spp,
-#'                 abund=arth$count,
-#'                 power=arth$mass^(.75),
-#'                 minE=min(arth$mass^(.75)))
-#' metePsi(1:10,
-#'         esf1$La[1],esf1$La[2],
-#'         esf1$Z,esf1$state.var['S0'],
-#'         esf1$state.var['N0'],
+#' esf1 <- meteESF(spp = arth$spp, 
+#'                 abund = arth$count, 
+#'                 power = arth$mass^(.75), 
+#'                 minE = min(arth$mass^(.75)))
+#' metePsi(1:10, 
+#'         esf1$La[1], esf1$La[2], 
+#'         esf1$Z, esf1$state.var['S0'], 
+#'         esf1$state.var['N0'], 
 #'         esf1$state.var['E0'])
 #' 
 #' @return numeric vector of length equal to length of \code{e}
@@ -150,7 +150,7 @@ ipd.meteESF <- function(x,...) {
 #  @aliases - a list of additional topic names that will be mapped to this documentation when the user looks them up from the command line.
 #  @family - a family name. All functions that have the same family tag will be linked in the documentation.
 
-metePsi <- function(e,la1,la2,Z,S0,N0,E0) {
+metePsi <- function(e, la1, la2, Z, S0, N0, E0) {
     gamma <- la1 + e*la2
     
     t1 <- S0/(N0*Z)
@@ -158,28 +158,29 @@ metePsi <- function(e,la1,la2,Z,S0,N0,E0) {
     t3 <- exp(-gamma*N0)/(1-exp(-gamma))
     t4 <- N0 + exp(-gamma)/(1-exp(-gamma))
     
-    return(t1*(t2 - t3*t4))
+    return(t1*(t2 - t3 * t4))
 }
 
 # helper functions to determine and implement analytical approximation
 .psiNumeric <- function(N0, E0) {
-  return(E0 > 1.4*10^5 - 200 * N0^0.7 |
-           N0 > 10^4)
+    useApprox <- E0 > 1.4 * 10^5 - 200 * N0^0.7 | N0 > 10^4
+    names(useApprox) <- NULL
+    return(!useApprox)
 }
 
-.qPsi <- function(p, La, N0, E0, log.p = FALSE) { # we need E0 to set the upper bound
-  la1 <- La[1]
-  la2 <- La[2]
-  b <- la1 + la2
-  
-  if(log.p) p <- exp(p)
-  r <- (1 - p) * N0
-  
-  f <- 1/la2 * log((b * N0 + r) / (r)) - la1 / la2
-  
-  # take care of boundary conditions
-  f[p == 1] <- E0
-  f[p == 0] <- 1
-  
-  return(f)
+.qPsi <- function(p, La, N0, E0, log.p  =  FALSE) {
+    la1 <- La[1]
+    la2 <- La[2]
+    b <- la1 + la2
+    
+    if(log.p) p <- exp(p)
+    r <- (1 - p) * N0
+    
+    f <- 1/la2 * log((b * N0 + r) / (r)) - la1 / la2
+    
+    # take care of boundary conditions
+    f[p == 1] <- E0
+    f[p == 0] <- 1
+    
+    return(f)
 }
